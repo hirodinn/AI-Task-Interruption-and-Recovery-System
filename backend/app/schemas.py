@@ -69,3 +69,7 @@ class ResumeBundleOut(BaseModel):
     recent_files: list[str]
     git_commits: list[str]
 
+
+class SessionPatchIn(BaseModel):
+    objective: str | None = None
+

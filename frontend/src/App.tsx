@@ -9,6 +9,7 @@ import {
   listSessionEvents,
   listSessions,
   listSessionsForProject,
+  patchSession,
   summarizeMissingSessions,
   summarizeSession,
 } from './api'
@@ -52,6 +53,8 @@ function App() {
   const [copying, setCopying] = useState(false)
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [objectiveDraft, setObjectiveDraft] = useState('')
+  const [savingObjective, setSavingObjective] = useState(false)
 
   async function refreshSessions(nextProjectId?: string) {
     const pid = nextProjectId ?? projectId
@@ -118,6 +121,7 @@ function App() {
         setEvents(evs)
         setRecentFiles(bundle.recent_files || [])
         setGitCommits(bundle.git_commits || [])
+        setObjectiveDraft(sess.objective || '')
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
     return () => {
@@ -210,6 +214,23 @@ function App() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setCopying(false)
+    }
+  }
+
+  async function onSaveObjective() {
+    if (!selectedId) return
+    setSavingObjective(true)
+    setError(null)
+    try {
+      const updated = await patchSession(selectedId, {
+        objective: objectiveDraft,
+      })
+      setSelected(updated)
+      setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSavingObjective(false)
     }
   }
 
@@ -324,7 +345,24 @@ function App() {
               </div>
               <div className="kv">
                 <div className="k">Objective</div>
-                <div className="v">{selected.objective || '—'}</div>
+                <div className="v">
+                  <div className="objectiveRow">
+                    <input
+                      className="objectiveInput"
+                      value={objectiveDraft}
+                      onChange={(e) => setObjectiveDraft(e.target.value)}
+                      placeholder="Set the session objective (optional)"
+                    />
+                    <button
+                      className="miniButton"
+                      onClick={onSaveObjective}
+                      disabled={savingObjective || backendOk === false}
+                      title="Save objective"
+                    >
+                      {savingObjective ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="sectionTitle">AI summary</div>

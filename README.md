@@ -44,6 +44,14 @@ npm run dev
 
 Open `http://127.0.0.1:5173`.
 
+## “Finished MVP” checklist
+
+- Backend running and reachable (`GET /api/health`)
+- Collector running and sending events to backend
+- Frontend shows sessions and timeline
+- You can edit a session **Objective** and click **Summarize session**
+- You can click **Copy resume** to paste context into a new task/chat
+
 ## API (MVP)
 
 - `POST /api/events`: ingest an activity event (collector uses this)

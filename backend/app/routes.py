@@ -8,7 +8,15 @@ from sqlmodel import Session, func, select
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
-from .schemas import BulkEventsIn, EventIn, EventOut, ProjectOut, ResumeBundleOut, SessionOut
+from .schemas import (
+    BulkEventsIn,
+    EventIn,
+    EventOut,
+    ProjectOut,
+    ResumeBundleOut,
+    SessionOut,
+    SessionPatchIn,
+)
 from .session_grouping import assign_session_id, get_or_create_project
 from .ai.prompting import build_session_prompt
 from .ai.providers import get_provider
@@ -50,7 +58,10 @@ def ingest_event(payload: EventIn, db: Session = Depends(get_session)):
 
 @router.post("/events/bulk", response_model=list[EventOut])
 def ingest_events_bulk(payload: BulkEventsIn, db: Session = Depends(get_session)):
-    out: list[EventOut] = []
+    if not payload.events:
+        return []
+
+    out_events: list[ActivityEvent] = []
     for ev in payload.events:
         ts = ev.ts
         if ts.tzinfo is not None:
@@ -70,10 +81,11 @@ def ingest_events_bulk(payload: BulkEventsIn, db: Session = Depends(get_session)
             event_metadata=ev.event_metadata,
         )
         db.add(event)
-        db.commit()
-        db.refresh(event)
-        out.append(EventOut.model_validate(event))
-    return out
+        out_events.append(event)
+
+    # One commit per batch for speed.
+    db.commit()
+    return [EventOut.model_validate(e) for e in out_events]
 
 
 @router.get("/sessions", response_model=list[SessionOut])
@@ -121,6 +133,37 @@ def get_session_detail(session_id: UUID, db: Session = Depends(get_session)):
     session_obj = db.get(WorkSession, session_id)
     if not session_obj:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    count = db.exec(
+        select(func.count(ActivityEvent.id)).where(ActivityEvent.session_id == session_id)
+    ).one()
+    return SessionOut(
+        id=session_obj.id,
+        project_id=session_obj.project_id,
+        started_at=session_obj.started_at,
+        ended_at=session_obj.ended_at,
+        objective=session_obj.objective,
+        ai_summary_markdown=session_obj.ai_summary_markdown,
+        ai_summary_json=session_obj.ai_summary_json,
+        ai_suggested_next_steps=session_obj.ai_suggested_next_steps,
+        event_count=int(count),
+    )
+
+
+@router.patch("/sessions/{session_id}", response_model=SessionOut)
+def patch_session(session_id: UUID, payload: SessionPatchIn, db: Session = Depends(get_session)):
+    session_obj = db.get(WorkSession, session_id)
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if payload.objective is not None:
+        # Treat blank as unset
+        v = payload.objective.strip()
+        session_obj.objective = v if v else None
+
+    db.add(session_obj)
+    db.commit()
+    db.refresh(session_obj)
 
     count = db.exec(
         select(func.count(ActivityEvent.id)).where(ActivityEvent.session_id == session_id)

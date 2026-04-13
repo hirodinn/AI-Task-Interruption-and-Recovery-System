@@ -137,6 +137,37 @@ body {
   font-size: 12px;
 }
 
+.objectiveRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.objectiveInput {
+  flex: 1 1 auto;
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(231, 233, 238, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.miniButton {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(231, 233, 238, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+}
+.miniButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .list {
   display: flex;
   flex-direction: column;

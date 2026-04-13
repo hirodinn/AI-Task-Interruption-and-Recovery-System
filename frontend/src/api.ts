@@ -87,6 +87,16 @@ export function summarizeSession(sessionId: string): Promise<Session> {
   })
 }
 
+export function patchSession(
+  sessionId: string,
+  patch: { objective?: string | null },
+): Promise<Session> {
+  return apiFetch<Session>(`/api/sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
 export function summarizeMissingSessions(opts?: {
   projectId?: string
   limit?: number
