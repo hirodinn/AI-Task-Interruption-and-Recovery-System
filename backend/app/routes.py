@@ -100,6 +100,20 @@ def get_session_detail(session_id: UUID, db: Session = Depends(get_session)):
     )
 
 
+@router.get("/sessions/{session_id}/events", response_model=list[EventOut])
+def list_session_events(session_id: UUID, db: Session = Depends(get_session)):
+    session_obj = db.get(WorkSession, session_id)
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    events = db.exec(
+        select(ActivityEvent)
+        .where(ActivityEvent.session_id == session_id)
+        .order_by(ActivityEvent.ts.asc())
+    ).all()
+    return [EventOut.model_validate(e) for e in events]
+
+
 @router.post("/sessions/{session_id}/summarize", response_model=SessionOut)
 async def summarize_session(session_id: UUID, db: Session = Depends(get_session)):
     session_obj = db.get(WorkSession, session_id)
