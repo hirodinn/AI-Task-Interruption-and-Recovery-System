@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Databases / local state
+*.sqlite
+*.sqlite3
+*.db
+
+# Node / React
+node_modules/
+dist/
+build/
+.next/
+.vite/
+.turbo/
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
