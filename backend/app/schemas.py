@@ -31,6 +31,10 @@ class EventIn(BaseModel):
     event_metadata: dict[str, Any] | None = None
 
 
+class BulkEventsIn(BaseModel):
+    events: list[EventIn]
+
+
 class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

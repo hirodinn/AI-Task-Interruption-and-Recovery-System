@@ -8,7 +8,7 @@ from sqlmodel import Session, func, select
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
-from .schemas import EventIn, EventOut, ProjectOut, ResumeBundleOut, SessionOut
+from .schemas import BulkEventsIn, EventIn, EventOut, ProjectOut, ResumeBundleOut, SessionOut
 from .session_grouping import assign_session_id, get_or_create_project
 from .ai.prompting import build_session_prompt
 from .ai.providers import get_provider
@@ -46,6 +46,34 @@ def ingest_event(payload: EventIn, db: Session = Depends(get_session)):
     db.commit()
     db.refresh(event)
     return EventOut.model_validate(event)
+
+
+@router.post("/events/bulk", response_model=list[EventOut])
+def ingest_events_bulk(payload: BulkEventsIn, db: Session = Depends(get_session)):
+    out: list[EventOut] = []
+    for ev in payload.events:
+        ts = ev.ts
+        if ts.tzinfo is not None:
+            ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+
+        project = get_or_create_project(db, root_path=ev.project_root_path, name=ev.project_name)
+        session = assign_session_id(db, project_id=project.id, ts=ts)
+
+        event = ActivityEvent(
+            project_id=project.id,
+            session_id=session.id,
+            ts=ts,
+            event_type=ev.event_type,
+            file_path=ev.file_path,
+            git_commit_hash=ev.git_commit_hash,
+            git_branch=ev.git_branch,
+            event_metadata=ev.event_metadata,
+        )
+        db.add(event)
+        db.commit()
+        db.refresh(event)
+        out.append(EventOut.model_validate(event))
+    return out
 
 
 @router.get("/sessions", response_model=list[SessionOut])

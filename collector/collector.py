@@ -24,6 +24,7 @@ class Config:
     project_root: Path
     project_name: str | None
     poll_git_seconds: int
+    debounce_seconds: float
 
 
 def read_config() -> Config:
@@ -32,17 +33,24 @@ def read_config() -> Config:
     project_root = Path(os.environ["PROJECT_ROOT"]).expanduser().resolve()
     project_name = os.environ.get("PROJECT_NAME") or None
     poll_git_seconds = int(os.environ.get("POLL_GIT_SECONDS", "10"))
+    debounce_seconds = float(os.environ.get("DEBOUNCE_SECONDS", "1"))
     return Config(
         backend_url=backend_url,
         project_root=project_root,
         project_name=project_name,
         poll_git_seconds=poll_git_seconds,
+        debounce_seconds=debounce_seconds,
     )
 
 
 def post_event(cfg: Config, payload: dict[str, Any]) -> None:
     url = f"{cfg.backend_url}/api/events"
     resp = requests.post(url, json=payload, timeout=10)
+    resp.raise_for_status()
+
+def post_events_bulk(cfg: Config, events: list[dict[str, Any]]) -> None:
+    url = f"{cfg.backend_url}/api/events/bulk"
+    resp = requests.post(url, json={"events": events}, timeout=15)
     resp.raise_for_status()
 
 
@@ -78,16 +86,38 @@ def get_head_commit(cwd: Path) -> str | None:
 class Handler(FileSystemEventHandler):
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        self._last_sent: dict[str, float] = {}
+        self._pending: list[dict[str, Any]] = []
+        self._last_flush = 0.0
+
+    def flush(self) -> None:
+        if not self._pending:
+            return
+        batch = self._pending[:]
+        self._pending.clear()
+        try:
+            post_events_bulk(self.cfg, batch)
+        except Exception:
+            # best-effort
+            pass
 
     def on_modified(self, event):
         if event.is_directory:
             return
         path = Path(event.src_path)
-        # Skip noisy files
-        if "/.git/" in str(path):
+        # Skip noisy files/dirs
+        s = str(path)
+        if "/.git/" in s or "/node_modules/" in s or "/dist/" in s or "/build/" in s:
             return
         if path.name.endswith((".pyc", ".swp")):
             return
+
+        now = time.time()
+        key = s
+        last = self._last_sent.get(key, 0.0)
+        if now - last < max(0.0, self.cfg.debounce_seconds):
+            return
+        self._last_sent[key] = now
 
         payload = {
             "project_root_path": str(self.cfg.project_root),
@@ -97,11 +127,10 @@ class Handler(FileSystemEventHandler):
             "file_path": str(path),
             "event_metadata": {"kind": "fs_modified"},
         }
-        try:
-            post_event(self.cfg, payload)
-        except Exception:
-            # Best-effort; collector should not crash on network errors.
-            pass
+        self._pending.append(payload)
+        if now - self._last_flush > 1.0 and len(self._pending) >= 10:
+            self._last_flush = now
+            self.flush()
 
 
 def main() -> None:
@@ -109,8 +138,9 @@ def main() -> None:
     if not cfg.project_root.exists():
         raise SystemExit(f"PROJECT_ROOT does not exist: {cfg.project_root}")
 
+    handler = Handler(cfg)
     observer = Observer()
-    observer.schedule(Handler(cfg), str(cfg.project_root), recursive=True)
+    observer.schedule(handler, str(cfg.project_root), recursive=True)
     observer.start()
 
     last_head: str | None = None
@@ -132,7 +162,8 @@ def main() -> None:
                         "event_metadata": {"previous_head": last_head},
                     }
                     try:
-                        post_event(cfg, payload)
+                        handler._pending.append(payload)
+                        handler.flush()
                     except Exception:
                         pass
                     last_head = head
@@ -146,13 +177,16 @@ def main() -> None:
                         "event_metadata": {"previous_branch": last_branch},
                     }
                     try:
-                        post_event(cfg, payload)
+                        handler._pending.append(payload)
+                        handler.flush()
                     except Exception:
                         pass
                     last_branch = branch
 
+            handler.flush()
             time.sleep(max(1, cfg.poll_git_seconds))
     finally:
+        handler.flush()
         observer.stop()
         observer.join()
 
