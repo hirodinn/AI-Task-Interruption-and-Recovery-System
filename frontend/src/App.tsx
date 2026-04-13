@@ -4,6 +4,7 @@ import type { Event, Project, Session } from './api'
 import {
   getSession,
   getResumeBundle,
+  health,
   listProjects,
   listSessionEvents,
   listSessions,
@@ -47,6 +48,8 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [summarizing, setSummarizing] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [backendOk, setBackendOk] = useState<boolean | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
 
   async function refreshSessions(nextProjectId?: string) {
     const pid = nextProjectId ?? projectId
@@ -75,6 +78,12 @@ function App() {
     setError(null)
     ;(async () => {
       try {
+        const h = await health()
+        if (!cancelled) setBackendOk(Boolean(h.ok))
+      } catch {
+        if (!cancelled) setBackendOk(false)
+      }
+      try {
         const p = await listProjects()
         if (cancelled) return
         setProjects(p)
@@ -87,6 +96,14 @@ function App() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!autoRefresh) return
+    const t = window.setInterval(() => {
+      refreshSessions().catch(() => {})
+    }, 10_000)
+    return () => window.clearInterval(t)
+  }, [autoRefresh, projectId, selectedId])
 
   useEffect(() => {
     if (!selectedId) return
@@ -174,6 +191,17 @@ function App() {
           <div className="subtitle">Sessions, summaries, and a quick “resume” view</div>
         </div>
         <div className="actions">
+          <div className={`status ${backendOk ? 'ok' : backendOk === false ? 'bad' : ''}`}>
+            {backendOk ? 'Backend: OK' : backendOk === false ? 'Backend: offline' : 'Backend: …'}
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+            />
+            Auto-refresh
+          </label>
           <button
             onClick={() => refreshSessions()}
             disabled={loading}

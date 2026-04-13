@@ -51,6 +51,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await resp.json()) as T
 }
 
+export function health(): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/api/health')
+}
+
 export function listSessions(): Promise<Session[]> {
   return apiFetch<Session[]>('/api/sessions')
 }

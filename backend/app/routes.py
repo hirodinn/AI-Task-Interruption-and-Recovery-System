@@ -16,6 +16,10 @@ from .ai.providers import get_provider
 
 router = APIRouter(prefix="/api")
 
+@router.get("/health")
+def health():
+    return {"ok": True}
+
 
 @router.post("/events", response_model=EventOut)
 def ingest_event(payload: EventIn, db: Session = Depends(get_session)):
