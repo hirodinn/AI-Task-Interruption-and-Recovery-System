@@ -29,6 +29,13 @@ export type Event = {
   event_metadata: Record<string, unknown> | null
 }
 
+export type ResumeBundle = {
+  session: Session
+  events: Event[]
+  recent_files: string[]
+  git_commits: string[]
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(path, {
     ...init,
@@ -63,6 +70,10 @@ export function getSession(sessionId: string): Promise<Session> {
 
 export function listSessionEvents(sessionId: string): Promise<Event[]> {
   return apiFetch<Event[]>(`/api/sessions/${sessionId}/events`)
+}
+
+export function getResumeBundle(sessionId: string): Promise<ResumeBundle> {
+  return apiFetch<ResumeBundle>(`/api/sessions/${sessionId}/resume`)
 }
 
 export function summarizeSession(sessionId: string): Promise<Session> {

@@ -8,7 +8,7 @@ from sqlmodel import Session, func, select
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
-from .schemas import EventIn, EventOut, ProjectOut, SessionOut
+from .schemas import EventIn, EventOut, ProjectOut, ResumeBundleOut, SessionOut
 from .session_grouping import assign_session_id, get_or_create_project
 from .ai.prompting import build_session_prompt
 from .ai.providers import get_provider
@@ -118,6 +118,51 @@ def list_session_events(session_id: UUID, db: Session = Depends(get_session)):
         .order_by(ActivityEvent.ts.asc())
     ).all()
     return [EventOut.model_validate(e) for e in events]
+
+
+@router.get("/sessions/{session_id}/resume", response_model=ResumeBundleOut)
+def get_resume_bundle(session_id: UUID, db: Session = Depends(get_session)):
+    session_obj = db.get(WorkSession, session_id)
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    events = db.exec(
+        select(ActivityEvent)
+        .where(ActivityEvent.session_id == session_id)
+        .order_by(ActivityEvent.ts.asc())
+    ).all()
+
+    # Compute a compact digest for UI / clipboard.
+    file_counts: dict[str, int] = {}
+    commits: list[str] = []
+    for e in events:
+        if e.file_path:
+            file_counts[e.file_path] = file_counts.get(e.file_path, 0) + 1
+        if e.git_commit_hash:
+            commits.append(e.git_commit_hash)
+
+    recent_files = [p for p, _ in sorted(file_counts.items(), key=lambda kv: kv[1], reverse=True)][:15]
+    git_commits = list(dict.fromkeys(commits))[-10:]  # unique, keep last few
+
+    count = len(events)
+    session_out = SessionOut(
+        id=session_obj.id,
+        project_id=session_obj.project_id,
+        started_at=session_obj.started_at,
+        ended_at=session_obj.ended_at,
+        objective=session_obj.objective,
+        ai_summary_markdown=session_obj.ai_summary_markdown,
+        ai_summary_json=session_obj.ai_summary_json,
+        ai_suggested_next_steps=session_obj.ai_suggested_next_steps,
+        event_count=int(count),
+    )
+
+    return ResumeBundleOut(
+        session=session_out,
+        events=[EventOut.model_validate(e) for e in events],
+        recent_files=recent_files,
+        git_commits=git_commits,
+    )
 
 
 @router.post("/sessions/{session_id}/summarize", response_model=SessionOut)

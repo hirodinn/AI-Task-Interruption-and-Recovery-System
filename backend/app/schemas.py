@@ -58,3 +58,10 @@ class SessionOut(BaseModel):
     ai_suggested_next_steps: list[str] | None
     event_count: int
 
+
+class ResumeBundleOut(BaseModel):
+    session: SessionOut
+    events: list[EventOut]
+    recent_files: list[str]
+    git_commits: list[str]
+

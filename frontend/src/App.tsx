@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Event, Project, Session } from './api'
 import {
   getSession,
+  getResumeBundle,
   listProjects,
   listSessionEvents,
   listSessions,
@@ -40,9 +41,12 @@ function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Session | null>(null)
   const [events, setEvents] = useState<Event[]>([])
+  const [recentFiles, setRecentFiles] = useState<string[]>([])
+  const [gitCommits, setGitCommits] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [summarizing, setSummarizing] = useState(false)
+  const [copying, setCopying] = useState(false)
 
   async function refreshSessions(nextProjectId?: string) {
     const pid = nextProjectId ?? projectId
@@ -88,11 +92,13 @@ function App() {
     if (!selectedId) return
     let cancelled = false
     setError(null)
-    Promise.all([getSession(selectedId), listSessionEvents(selectedId)])
-      .then(([sess, evs]) => {
+    Promise.all([getSession(selectedId), listSessionEvents(selectedId), getResumeBundle(selectedId)])
+      .then(([sess, evs, bundle]) => {
         if (cancelled) return
         setSelected(sess)
         setEvents(evs)
+        setRecentFiles(bundle.recent_files || [])
+        setGitCommits(bundle.git_commits || [])
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
     return () => {
@@ -121,6 +127,45 @@ function App() {
     }
   }
 
+  async function onCopyResume() {
+    if (!selected) return
+    setCopying(true)
+    setError(null)
+    try {
+      const lines: string[] = []
+      lines.push('## Resume bundle')
+      lines.push('')
+      lines.push(`- Session: ${fmt(selected.started_at)} → ${fmt(selected.ended_at)}`)
+      if (selected.objective) lines.push(`- Objective: ${selected.objective}`)
+      lines.push(`- Events: ${selected.event_count}`)
+      if (recentFiles.length > 0) {
+        lines.push('')
+        lines.push('### Recent files')
+        for (const f of recentFiles) lines.push(`- ${f}`)
+      }
+      if (gitCommits.length > 0) {
+        lines.push('')
+        lines.push('### Git commits')
+        for (const c of gitCommits) lines.push(`- ${c}`)
+      }
+      lines.push('')
+      lines.push('### AI summary')
+      lines.push(selected.ai_summary_markdown || '(no summary yet)')
+      lines.push('')
+      lines.push('### Suggested next steps')
+      if (selected.ai_suggested_next_steps && selected.ai_suggested_next_steps.length > 0) {
+        selected.ai_suggested_next_steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`))
+      } else {
+        lines.push('(none)')
+      }
+      await navigator.clipboard.writeText(lines.join('\n'))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCopying(false)
+    }
+  }
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -135,6 +180,9 @@ function App() {
             className="secondary"
           >
             Refresh
+          </button>
+          <button onClick={onCopyResume} disabled={!selected || copying} className="secondary">
+            {copying ? 'Copying…' : 'Copy resume'}
           </button>
           <button onClick={onSummarize} disabled={!selectedId || summarizing}>
             {summarizing ? 'Summarizing…' : 'Summarize session'}
@@ -228,6 +276,19 @@ function App() {
               ) : (
                 <div className="emptyTight">No next steps yet.</div>
               )}
+
+              {recentFiles.length > 0 ? (
+                <>
+                  <div className="sectionTitle">Recent files</div>
+                  <ul className="compactList">
+                    {recentFiles.slice(0, 10).map((f) => (
+                      <li key={f} className="mono muted">
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
             </div>
           )}
         </section>

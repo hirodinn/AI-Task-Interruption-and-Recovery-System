@@ -185,6 +185,11 @@ body {
   font-size: 13px;
 }
 
+.compactList {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .timeline {
   padding: 10px 12px;
   display: flex;
