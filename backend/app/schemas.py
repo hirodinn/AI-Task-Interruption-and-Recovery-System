@@ -8,6 +8,15 @@ from pydantic import BaseModel, Field
 from pydantic import ConfigDict
 
 
+class ProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    root_path: str
+    created_at: datetime
+
+
 class EventIn(BaseModel):
     project_root_path: str = Field(..., examples=["/home/me/my-repo"])
     project_name: str | None = None

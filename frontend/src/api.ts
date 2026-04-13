@@ -10,6 +10,13 @@ export type Session = {
   event_count: number
 }
 
+export type Project = {
+  id: string
+  name: string
+  root_path: string
+  created_at: string
+}
+
 export type Event = {
   id: string
   project_id: string
@@ -39,6 +46,15 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function listSessions(): Promise<Session[]> {
   return apiFetch<Session[]>('/api/sessions')
+}
+
+export function listProjects(): Promise<Project[]> {
+  return apiFetch<Project[]>('/api/projects')
+}
+
+export function listSessionsForProject(projectId: string): Promise<Session[]> {
+  const qs = new URLSearchParams({ project_id: projectId })
+  return apiFetch<Session[]>(`/api/sessions?${qs.toString()}`)
 }
 
 export function getSession(sessionId: string): Promise<Session> {

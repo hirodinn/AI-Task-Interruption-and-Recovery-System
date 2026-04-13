@@ -8,7 +8,7 @@ from sqlmodel import Session, func, select
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
-from .schemas import EventIn, EventOut, SessionOut
+from .schemas import EventIn, EventOut, ProjectOut, SessionOut
 from .session_grouping import assign_session_id, get_or_create_project
 from .ai.prompting import build_session_prompt
 from .ai.providers import get_provider
@@ -76,6 +76,12 @@ def list_sessions(project_id: UUID | None = None, db: Session = Depends(get_sess
         )
         for s in sessions
     ]
+
+
+@router.get("/projects", response_model=list[ProjectOut])
+def list_projects(db: Session = Depends(get_session)):
+    projects = db.exec(select(Project).order_by(Project.created_at.desc()).limit(200)).all()
+    return [ProjectOut.model_validate(p) for p in projects]
 
 
 @router.get("/sessions/{session_id}", response_model=SessionOut)

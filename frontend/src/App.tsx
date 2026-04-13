@@ -1,7 +1,14 @@
 import './App.css'
 import { useEffect, useMemo, useState } from 'react'
-import type { Event, Session } from './api'
-import { getSession, listSessionEvents, listSessions, summarizeSession } from './api'
+import type { Event, Project, Session } from './api'
+import {
+  getSession,
+  listProjects,
+  listSessionEvents,
+  listSessions,
+  listSessionsForProject,
+  summarizeSession,
+} from './api'
 
 function fmt(dt: string) {
   try {
@@ -27,6 +34,8 @@ function humanDuration(ms: number) {
 }
 
 function App() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState<string>('all')
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Session | null>(null)
@@ -35,18 +44,41 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [summarizing, setSummarizing] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
+  async function refreshSessions(nextProjectId?: string) {
+    const pid = nextProjectId ?? projectId
     setLoading(true)
     setError(null)
-    listSessions()
-      .then((s) => {
+    try {
+      const s =
+        pid === 'all' ? await listSessions() : await listSessionsForProject(pid)
+      setSessions(s)
+      if (s.length === 0) {
+        setSelectedId(null)
+        setSelected(null)
+        setEvents([])
+      } else if (!selectedId || !s.some((x) => x.id === selectedId)) {
+        setSelectedId(s[0].id)
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    setError(null)
+    ;(async () => {
+      try {
+        const p = await listProjects()
         if (cancelled) return
-        setSessions(s)
-        if (!selectedId && s.length > 0) setSelectedId(s[0].id)
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false))
+        setProjects(p)
+      } catch (e: unknown) {
+        // non-fatal; sessions still work without this.
+      }
+      await refreshSessions('all')
+    })()
     return () => {
       cancelled = true
     }
@@ -97,6 +129,13 @@ function App() {
           <div className="subtitle">Sessions, summaries, and a quick “resume” view</div>
         </div>
         <div className="actions">
+          <button
+            onClick={() => refreshSessions()}
+            disabled={loading}
+            className="secondary"
+          >
+            Refresh
+          </button>
           <button onClick={onSummarize} disabled={!selectedId || summarizing}>
             {summarizing ? 'Summarizing…' : 'Summarize session'}
           </button>
@@ -107,8 +146,27 @@ function App() {
 
       <main className="layout">
         <aside className="panel">
-          <div className="panelTitle">
-            Sessions {loading ? <span className="muted">(loading…)</span> : null}
+          <div className="panelTitleRow">
+            <div className="panelTitleText">
+              Sessions {loading ? <span className="muted">(loading…)</span> : null}
+            </div>
+            <select
+              className="select"
+              value={projectId}
+              onChange={(e) => {
+                const next = e.target.value
+                setProjectId(next)
+                refreshSessions(next)
+              }}
+              aria-label="Project filter"
+            >
+              <option value="all">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="list">
             {sessions.length === 0 && !loading ? (
