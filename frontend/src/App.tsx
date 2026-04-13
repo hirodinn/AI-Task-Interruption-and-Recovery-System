@@ -9,6 +9,7 @@ import {
   listSessionEvents,
   listSessions,
   listSessionsForProject,
+  summarizeMissingSessions,
   summarizeSession,
 } from './api'
 
@@ -47,6 +48,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [summarizing, setSummarizing] = useState(false)
+  const [batchSummarizing, setBatchSummarizing] = useState(false)
   const [copying, setCopying] = useState(false)
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -144,6 +146,34 @@ function App() {
     }
   }
 
+  async function onSummarizeMissing() {
+    setBatchSummarizing(true)
+    setError(null)
+    try {
+      const updated = await summarizeMissingSessions({
+        projectId: projectId === 'all' ? undefined : projectId,
+        limit: 10,
+      })
+      if (updated.length > 0) {
+        setSessions((prev) => {
+          const map = new Map(prev.map((s) => [s.id, s]))
+          for (const u of updated) map.set(u.id, u)
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.ended_at).getTime() - new Date(a.ended_at).getTime(),
+          )
+        })
+        if (selectedId && updated.some((u) => u.id === selectedId)) {
+          const u = updated.find((x) => x.id === selectedId)
+          if (u) setSelected(u)
+        }
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBatchSummarizing(false)
+    }
+  }
+
   async function onCopyResume() {
     if (!selected) return
     setCopying(true)
@@ -208,6 +238,14 @@ function App() {
             className="secondary"
           >
             Refresh
+          </button>
+          <button
+            onClick={onSummarizeMissing}
+            disabled={batchSummarizing || backendOk === false}
+            className="secondary"
+            title="Summarize up to 10 sessions that are missing summaries"
+          >
+            {batchSummarizing ? 'Summarizing…' : 'Summarize missing'}
           </button>
           <button onClick={onCopyResume} disabled={!selected || copying} className="secondary">
             {copying ? 'Copying…' : 'Copy resume'}

@@ -215,3 +215,65 @@ async def summarize_session(session_id: UUID, db: Session = Depends(get_session)
         event_count=int(count),
     )
 
+
+@router.post("/sessions/summarize_missing", response_model=list[SessionOut])
+async def summarize_missing_sessions(
+    project_id: UUID | None = None,
+    limit: int = 10,
+    db: Session = Depends(get_session),
+):
+    """
+    Summarize recent sessions that don't have ai_summary_markdown yet.
+    """
+    limit = max(1, min(int(limit), 50))
+    q = select(WorkSession).where(WorkSession.ai_summary_markdown.is_(None))
+    if project_id:
+        q = q.where(WorkSession.project_id == project_id)
+    sessions = db.exec(q.order_by(WorkSession.ended_at.desc()).limit(limit)).all()
+    if not sessions:
+        return []
+
+    provider = get_provider()
+    out: list[SessionOut] = []
+
+    for s in sessions:
+        project = db.get(Project, s.project_id)
+        if not project:
+            continue
+        events = db.exec(
+            select(ActivityEvent)
+            .where(ActivityEvent.session_id == s.id)
+            .order_by(ActivityEvent.ts.asc())
+        ).all()
+        prompt = build_session_prompt(
+            session=s,
+            events=events,
+            project_root_path=project.root_path,
+            project_name=project.name,
+        )
+        result = await provider.summarize_session(prompt=prompt)
+
+        s.objective = result.objective
+        s.ai_summary_markdown = result.summary_markdown
+        s.ai_summary_json = result.summary_json
+        s.ai_suggested_next_steps = result.suggested_next_steps
+        db.add(s)
+        db.commit()
+        db.refresh(s)
+
+        out.append(
+            SessionOut(
+                id=s.id,
+                project_id=s.project_id,
+                started_at=s.started_at,
+                ended_at=s.ended_at,
+                objective=s.objective,
+                ai_summary_markdown=s.ai_summary_markdown,
+                ai_summary_json=s.ai_summary_json,
+                ai_suggested_next_steps=s.ai_suggested_next_steps,
+                event_count=len(events),
+            )
+        )
+
+    return out
+

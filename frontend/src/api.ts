@@ -87,3 +87,17 @@ export function summarizeSession(sessionId: string): Promise<Session> {
   })
 }
 
+export function summarizeMissingSessions(opts?: {
+  projectId?: string
+  limit?: number
+}): Promise<Session[]> {
+  const qs = new URLSearchParams()
+  if (opts?.projectId) qs.set('project_id', opts.projectId)
+  if (opts?.limit != null) qs.set('limit', String(opts.limit))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return apiFetch<Session[]>(`/api/sessions/summarize_missing${suffix}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
