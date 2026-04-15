@@ -19,7 +19,7 @@ from .schemas import (
 )
 from .session_grouping import assign_session_id, get_or_create_project
 from .ai.prompting import build_session_prompt
-from .ai.providers import get_provider
+from .ai.providers import AiRateLimitError, AiUpstreamError, get_provider
 
 
 router = APIRouter(prefix="/api")
@@ -263,7 +263,18 @@ async def summarize_session(session_id: UUID, db: Session = Depends(get_session)
         project_name=project.name,
     )
     provider = get_provider()
-    result = await provider.summarize_session(prompt=prompt)
+    try:
+        result = await provider.summarize_session(prompt=prompt)
+    except AiRateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=str(e),
+            headers={"Retry-After": str(e.retry_after_seconds)}
+            if e.retry_after_seconds is not None
+            else None,
+        )
+    except AiUpstreamError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
     session_obj.objective = result.objective
     session_obj.ai_summary_markdown = result.summary_markdown
@@ -322,7 +333,14 @@ async def summarize_missing_sessions(
             project_root_path=project.root_path,
             project_name=project.name,
         )
-        result = await provider.summarize_session(prompt=prompt)
+        try:
+            result = await provider.summarize_session(prompt=prompt)
+        except AiRateLimitError as e:
+            # Stop early and return what we have; client can retry later.
+            return out
+        except AiUpstreamError:
+            # Skip this session on transient upstream errors.
+            continue
 
         s.objective = result.objective
         s.ai_summary_markdown = result.summary_markdown

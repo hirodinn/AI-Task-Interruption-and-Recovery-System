@@ -20,6 +20,16 @@ class AiProvider(Protocol):
     async def summarize_session(self, *, prompt: str) -> AiSummary: ...
 
 
+class AiRateLimitError(RuntimeError):
+    def __init__(self, *, message: str, retry_after_seconds: int | None = None):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+class AiUpstreamError(RuntimeError):
+    pass
+
+
 class NoneProvider:
     async def summarize_session(self, *, prompt: str) -> AiSummary:
         return AiSummary(
@@ -43,28 +53,48 @@ class OpenAiProvider:
 
     async def summarize_session(self, *, prompt: str) -> AiSummary:
         # Uses OpenAI-compatible Chat Completions endpoint.
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                json={
-                    "model": self._model,
-                    "temperature": 0.2,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are an expert developer productivity assistant. "
-                                "Given an event timeline from a coding session, infer intent "
-                                "and produce a concise, structured recovery summary."
-                            ),
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "response_format": {"type": "json_object"},
+        payload = {
+            "model": self._model,
+            "temperature": 0.2,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert developer productivity assistant. "
+                        "Given an event timeline from a coding session, infer intent "
+                        "and produce a concise, structured recovery summary."
+                    ),
                 },
-            )
-            resp.raise_for_status()
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+        }
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            try:
+                resp = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json=payload,
+                )
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code if e.response else None
+                if status == 429:
+                    retry_after = None
+                    try:
+                        ra = e.response.headers.get("retry-after")
+                        retry_after = int(ra) if ra and ra.isdigit() else None
+                    except Exception:
+                        retry_after = None
+                    raise AiRateLimitError(
+                        message="OpenAI rate limit hit (429). Try again shortly.",
+                        retry_after_seconds=retry_after,
+                    ) from e
+                raise AiUpstreamError(f"OpenAI request failed (status={status}).") from e
+            except httpx.HTTPError as e:
+                raise AiUpstreamError("OpenAI request failed (network error).") from e
+
             data = resp.json()
 
         content = data["choices"][0]["message"]["content"]
