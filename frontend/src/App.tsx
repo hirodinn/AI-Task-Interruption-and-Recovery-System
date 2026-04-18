@@ -16,7 +16,7 @@ import type { Event, Project, Session } from './api'
 
 // --- Icons ---
 const SparklesIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
 )
 const TrashIcon = ({ className }: { className?: string }) => (
   <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
@@ -33,9 +33,6 @@ const SaveIcon = ({ className }: { className?: string }) => (
 const ChevronDownIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
 )
-const TerminalIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-)
 const ExecutionPathIcon = ({ className }: { className?: string }) => (
   <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/><path d="M3 12h12"/><path d="M21 12h.01"/></svg>
 )
@@ -44,6 +41,15 @@ const LightningIcon = ({ className }: { className?: string }) => (
 )
 const EditIcon = ({ className }: { className?: string }) => (
   <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+)
+const FileCodeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 13 2 2-2 2"/><path d="m15 13-2 2 2 2"/></svg>
+)
+const WarningIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+)
+const RefreshIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
 )
 
 function fmt(dt: string) {
@@ -70,6 +76,33 @@ function shortId(id: string) {
   return `#session-${id.slice(0, 4)}`
 }
 
+function parseMarkdownToSections(md: string) {
+  if (!md) return []
+  const cleanMd = md.replace(/^#\s+Coding Session Summary\s*/i, '').trim()
+  const segments = cleanMd.split(/##\s+/).filter(Boolean)
+  const BLACKLIST = ['immediate next steps', 'coding session summary', 'changed files', 'risks']
+  
+  return segments.map(seg => {
+    const lines = seg.trim().split('\n')
+    const title = lines[0].trim()
+    const content = lines.slice(1).join('\n').trim()
+    return { title, content }
+  }).filter(sec => !BLACKLIST.some(b => sec.title.toLowerCase().includes(b)))
+}
+
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="text-white font-bold">{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={i} className="bg-white/10 px-1 rounded font-mono text-[13px] text-[#00f5ff]">{part.slice(1, -1)}</code>
+    }
+    return part
+  })
+}
+
 function App() {
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>('')
@@ -84,6 +117,7 @@ function App() {
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [isEditingObjective, setIsEditingObjective] = useState(false)
   const [editingObjValue, setEditingObjValue] = useState('')
+  const [autoReload, setAutoReload] = useState(true)
 
   const refreshSessions = useCallback(async (nextProjectId?: string, forceSelectFirst = false) => {
     const pid = nextProjectId ?? projectId
@@ -127,10 +161,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!projectId) return
+    if (!projectId || !autoReload) return
     const t = setInterval(() => refreshSessions(), 10_000)
     return () => clearInterval(t)
-  }, [refreshSessions, projectId])
+  }, [refreshSessions, projectId, autoReload])
 
   useEffect(() => {
     if (!selectedId) return
@@ -156,16 +190,6 @@ function App() {
     const m = Math.floor((s % 3600) / 60)
     return `${h}h ${m}m`
   }, [selected])
-
-  const activeBuffer = useMemo(() => {
-    const map = new Map<string, { count: number; lastTs: string }>()
-    for (const e of events) {
-      if (!e.file_path) continue
-      const existing = map.get(e.file_path)
-      map.set(e.file_path, { count: (existing?.count || 0) + 1, lastTs: e.ts })
-    }
-    return Array.from(map.entries()).sort((a, b) => new Date(b[1].lastTs).getTime() - new Date(a[1].lastTs).getTime()).slice(0, 10)
-  }, [events])
 
   const onSummarizeMissing = async () => {
     setBatchSummarizing(true)
@@ -233,33 +257,70 @@ function App() {
     } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
   }
 
+  const sections = useMemo(() => parseMarkdownToSections(selected?.ai_summary_markdown || ''), [selected])
+  
+  const structuredFileDetails = useMemo(() => {
+    const details = selected?.ai_summary_json?.file_details
+    if (Array.isArray(details)) return details as { file_path: string; what_changed: string; why_it_matters: string; recommended_check: string }[]
+    return null
+  }, [selected])
+
+  const structuredRisks = useMemo(() => {
+    const risks = selected?.ai_summary_json?.risks_or_unknowns
+    if (Array.isArray(risks)) return risks as string[]
+    return null
+  }, [selected])
+
+  const orderedReportContent = useMemo(() => {
+    const objective = sections.find(s => s.title.toLowerCase().includes('session objective'))
+    const rest = sections.filter(s => !s.title.toLowerCase().includes('session objective'))
+    return { objective, rest }
+  }, [sections])
+
   return (
     <div className="flex min-h-screen bg-[#0a0c10] text-[#e1e1e1] selection:bg-[#00f5ff]/30 font-sans">
-      {/* Fixed Sidebar */}
       <aside className="fixed inset-y-0 left-0 flex w-[280px] flex-col border-r border-[#00f5ff]/10 bg-[#050608] z-20">
-        <div className="p-4 border-b border-white/5">
-          <div className="relative group">
-            <select
-                className="w-full appearance-none rounded-lg border border-[#00f5ff]/20 bg-[#111418] py-2.5 pr-10 pl-4 text-[12px] font-bold text-[#00f5ff] uppercase tracking-wider outline-none transition hover:border-[#00f5ff]/40 focus:border-[#00f5ff]/60"
-                value={projectId}
-                onChange={(e) => { 
-                  const nextId = e.target.value;
-                  setProjectId(nextId); 
-                  refreshSessions(nextId, true); 
-                }}
-            >
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#00f5ff]/40 group-hover:text-[#00f5ff]/60">
-              <ChevronDownIcon />
+        <div className="p-4 border-b border-white/5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative group flex-1">
+              <select
+                  className="w-full appearance-none rounded-lg border border-[#00f5ff]/20 bg-[#111418] py-2.5 pr-10 pl-4 text-[12px] font-bold text-[#00f5ff] uppercase tracking-wider outline-none transition hover:border-[#00f5ff]/40 focus:border-[#00f5ff]/60"
+                  value={projectId}
+                  onChange={(e) => { 
+                    const nextId = e.target.value;
+                    setProjectId(nextId); 
+                    refreshSessions(nextId, true); 
+                  }}
+              >
+                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#00f5ff]/40 group-hover:text-[#00f5ff]/60">
+                <ChevronDownIcon />
+              </div>
             </div>
+            <button 
+              onClick={() => refreshSessions()}
+              title="Manual Sync"
+              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-[#00f5ff] hover:border-[#00f5ff]/40 transition-all hover:bg-[#00f5ff]/5"
+            >
+              <RefreshIcon />
+            </button>
           </div>
+          
+          <button 
+            onClick={() => setAutoReload(!autoReload)}
+            className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md border transition-all ${autoReload ? 'border-[#00ff9d]/30 bg-[#00ff9d]/5 text-[#00ff9d]' : 'border-white/5 bg-white/[0.02] text-white/20'}`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`h-1.5 w-1.5 rounded-full ${autoReload ? 'bg-[#00ff9d] animate-pulse' : 'bg-white/20'}`} />
+              <span className="text-[9px] font-black uppercase tracking-tighter">{autoReload ? 'Auto_Sync_Active' : 'Auto_Sync_Paused'}</span>
+            </div>
+            <div className={`text-[8px] font-mono px-1 rounded ${autoReload ? 'bg-[#00ff9d]/20' : 'bg-white/10'}`}>10s</div>
+          </button>
         </div>
-
-        <div className="px-5 py-3">
+        <div className="px-5 py-4">
           <h2 className="text-[10px] font-bold tracking-[0.2em] text-[#6b7280] uppercase">Recent Sessions</h2>
         </div>
-
         <div className="flex-1 overflow-y-auto px-2 pb-20 custom-scrollbar">
           <div className="space-y-1">
             {sessions.map((s) => {
@@ -278,7 +339,6 @@ function App() {
                     </span>
                     <span className="shrink-0 text-[10px] font-medium text-white/20 pt-0.5">{timeAgo(s.ended_at)}</span>
                   </div>
-                  
                   <div className="flex items-center gap-3">
                     <div className={`flex items-center gap-1.5 rounded border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
                       isActive ? 'border-[#00f5ff]/30 bg-[#00f5ff]/10 text-[#00f5ff]' : 'border-white/10 bg-white/5 text-white/30'
@@ -295,7 +355,6 @@ function App() {
             })}
           </div>
         </div>
-
         <div className="mt-auto p-4 border-t border-white/5 bg-[#050608] flex flex-col gap-2">
              <button
                 onClick={onSummarizeMissing}
@@ -314,10 +373,7 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="ml-[280px] grid grid-cols-[1fr_320px] flex-1 min-h-screen">
-        
-        {/* Left Column */}
         <main className="flex flex-col p-8 gap-8">
           {selected ? (
             <>
@@ -339,7 +395,7 @@ function App() {
                             if (e.key === 'Escape') setIsEditingObjective(false)
                           }}
                         />
-                        <button onClick={onSaveObjective} className="rounded bg-[#00f5ff] px-6 py-2 h-full text-[12px] font-black text-black uppercase shadow-[0_0_15px_rgba(0,245,255,0.3)] min-w-[100px]">Save</button>
+                        <button onClick={onSaveObjective} className="rounded bg-[#00f5ff] px-4 py-2 h-full text-[12px] font-black text-black uppercase shadow-[0_0_15px_rgba(0,245,255,0.3)] min-w-[100px]">Save</button>
                       </div>
                     ) : (
                       <div 
@@ -368,13 +424,115 @@ function App() {
                 </div>
               </header>
 
-              <section className="relative rounded-lg border border-white/5 bg-[#111418] p-8 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1.5 before:bg-[#00f5ff] before:rounded-l-lg overflow-hidden">
-                <div className="mb-4 flex items-center gap-2 text-[11px] font-black tracking-[0.1em] text-white uppercase">
-                  <SparklesIcon className="text-[#00f5ff]" /> Synthesis_Report
+              <section className="flex flex-col gap-6">
+                <div className="flex items-center gap-3 text-[11px] font-bold text-white/20 uppercase tracking-widest">
+                  <SparklesIcon /> System_Audit_Report
                 </div>
-                <p className="text-[14px] leading-relaxed text-white/70 font-medium">
-                  {selected.ai_summary_markdown || 'System is identifying an ongoing refactor. Detailed analysis will appear here once summarized.'}
-                </p>
+                
+                <div className="grid gap-6">
+                  {/* Phase 1: Session Objective (Hero Style) */}
+                  {orderedReportContent.objective && (
+                    <div className="group relative overflow-hidden rounded-xl border border-[#00f5ff]/20 bg-[#00f5ff]/[0.02] p-8 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 bg-gradient-to-r from-[#00f5ff]/5 to-transparent transition-all">
+                       <div className="absolute top-0 right-0 p-6 opacity-5"><SparklesIcon className="w-24 h-24" /></div>
+                       <div className="text-[12px] font-bold text-[#00f5ff] mb-4 flex items-center gap-3 italic capitalize">
+                          <span className="h-0.5 w-6 bg-[#00f5ff]" /> {orderedReportContent.objective.title}
+                       </div>
+                       <h2 className="text-2xl font-bold text-white leading-tight pr-12">
+                          {renderInlineMarkdown(orderedReportContent.objective.content)}
+                       </h2>
+                    </div>
+                  )}
+
+                  {/* Phase 2: Risks (Persistent Hero Rendering - Always below objective) */}
+                  <div className={`rounded-xl border transition-all duration-500 overflow-hidden ${structuredRisks && structuredRisks.length > 0 ? 'border-red-500/20 bg-red-500/[0.02] p-6' : 'border-white/5 bg-white/[0.01] p-5 opacity-40'}`}>
+                    <div className={`flex items-center gap-3 font-bold text-[12px] mb-4 uppercase italic ${structuredRisks && structuredRisks.length > 0 ? 'text-red-500' : 'text-white/20'}`}>
+                       <WarningIcon /> {structuredRisks && structuredRisks.length > 0 ? 'Risks / Unknowns Detected' : 'Technical Risks Evaluated'}
+                    </div>
+                    {structuredRisks && structuredRisks.length > 0 ? (
+                      <div className="grid gap-3">
+                         {structuredRisks.map((risk, idx) => (
+                           <div key={idx} className="flex items-start gap-4 animate-fade-in">
+                              <div className="h-1.5 w-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
+                              <span className="text-[14px] font-medium text-white/70 leading-relaxed">{renderInlineMarkdown(risk)}</span>
+                           </div>
+                         ))}
+                      </div>
+                    ) : (
+                      <div className="text-[13px] font-medium text-white/20 italic">
+                        No critical technical hazards or blocking unknowns identified for this path.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Phase 3: Other Sections (What Changed, etc.) */}
+                  {orderedReportContent.rest.map((sec, i) => {
+                    const isChanged = sec.title.toLowerCase().includes('what changed')
+
+                    if (isChanged) {
+                      return (
+                        <div key={i} className="rounded-xl border border-white/5 bg-[#111418] overflow-hidden">
+                           <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                              <h3 className="text-[14px] font-bold text-white/50 capitalize">{sec.title}</h3>
+                              <div className="h-2 w-2 rounded-full bg-[#00f5ff] animate-pulse" />
+                           </div>
+                           <div className="divide-y divide-white/5">
+                            {sec.content.split('\n').filter(Boolean).map((line, li) => (
+                              <div key={li} className="group/item flex items-center gap-4 px-6 py-5 hover:bg-white/[0.02] transition-colors">
+                                 <div className="font-mono text-[9px] font-bold text-[#00f5ff] w-12 shrink-0 opacity-30 group-hover/item:opacity-100">Item_{li+1}</div>
+                                 <div className="h-px w-6 bg-white/5" />
+                                 <div className="text-[15px] font-medium text-white/60 group-hover/item:text-white transition-colors pl-4">
+                                    {renderInlineMarkdown(line.replace(/^[*-]\s*/, ''))}
+                                 </div>
+                              </div>
+                            ))}
+                           </div>
+                        </div>
+                      )
+                    }
+                    
+                    return (
+                        <div key={i} className="relative p-6 rounded-2xl border border-white/5 bg-white/[0.01]">
+                          <h3 className="text-[14px] font-bold text-white/30 capitalize mb-4">{sec.title}</h3>
+                          <div className="text-[14px] font-medium text-white/60 whitespace-pre-wrap">
+                            {renderInlineMarkdown(sec.content)}
+                          </div>
+                        </div>
+                    )
+                  })}
+
+                  {/* Phase 4: File Detail Hub */}
+                  {structuredFileDetails && structuredFileDetails.length > 0 && (
+                     <div className="space-y-6 pt-4">
+                        <h3 className="text-[14px] font-bold text-white/30 capitalize flex items-center gap-4 px-2">
+                           <span className="h-px w-10 bg-white/10" /> Changed files in detail
+                        </h3>
+                        <div className="grid gap-5">
+                           {structuredFileDetails.map((f, fi) => (
+                              <div key={fi} className="group/file relative rounded-2xl border border-white/10 bg-[#050608] transition-all hover:border-[#00f5ff]/40 hover:shadow-[0_0_40px_rgba(0,245,255,0.04)]">
+                                 <div className="flex items-center gap-4 bg-white/5 p-5 border-b border-white/5">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#00f5ff]/10 text-[#00f5ff]">
+                                       <FileCodeIcon className="scale-110" />
+                                    </div>
+                                    <span className="font-mono text-[14px] font-bold text-[#00f5ff] truncate tracking-tight">{f.file_path}</span>
+                                 </div>
+                                 <div className="p-6 grid gap-5">
+                                    {[
+                                       { label: 'What Changed', value: f.what_changed },
+                                       { label: 'Why It Matters', value: f.why_it_matters },
+                                       { label: 'Manual Check', value: f.recommended_check }
+                                    ].map((d, di) => (
+                                       <div key={di} className="flex flex-col gap-2 relative">
+                                          <div className="text-[11px] font-bold text-white/20 capitalize">{d.label}</div>
+                                          <div className="text-[14px] font-medium text-white/50 leading-relaxed pl-5 border-l-2 border-white/5 group-hover/file:border-[#00f5ff]/40 transition-all">{renderInlineMarkdown(d.value)}</div>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  )}
+                </div>
               </section>
 
               <section className="flex flex-col gap-5">
@@ -396,23 +554,6 @@ function App() {
                 </div>
               </section>
 
-              <section className="flex flex-col gap-4">
-                <div className="flex items-center gap-2.5 text-[11px] font-black tracking-[0.1em] text-white/40 uppercase">
-                  <TerminalIcon /> Active Buffer
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {activeBuffer.map(([path]) => (
-                    <div key={path} className="flex items-center justify-between rounded-lg border border-white/5 bg-[#111418] p-3.5 group transition-colors hover:border-[#00f5ff]/10">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FolderIcon className="text-white/20 shrink-0" />
-                        <span className="truncate font-mono text-[11px] font-bold text-white/60 tracking-tight">{path}</span>
-                      </div>
-                      <div className="h-2 w-2 rounded-full bg-[#00ff9d] shadow-[0_0_8px_rgba(0,255,157,0.4)]" />
-                    </div>
-                  ))}
-                </div>
-              </section>
-
               <footer className="mt-auto pt-8 border-t border-white/5 flex items-center justify-between">
                 <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.1em]">
                   Purge Context Logic // ID: {selected.id.slice(0, 16)}
@@ -422,7 +563,7 @@ function App() {
                     onClick={onCopyResume}
                     className="flex items-center gap-2.5 rounded border border-white/10 bg-[#111418] px-6 py-2.5 text-[11px] font-black text-white/70 uppercase tracking-widest hover:bg-white/5 hover:border-white/20 transition-all"
                   >
-                    <SaveIcon /> Copy Resume Bundle
+                    <SaveIcon /> Copy Bundle
                   </button>
                   <button 
                     onClick={onRemoveSession}
@@ -442,8 +583,6 @@ function App() {
             </div>
           )}
         </main>
-
-        {/* Right Sidebar */}
         <aside className="border-l border-[#00f5ff]/10 bg-[#050608] flex flex-col p-6 gap-8 overflow-hidden flex-1">
           <header className="flex items-center justify-between">
              <div className={`flex items-center gap-2 text-[10px] font-black tracking-widest uppercase transition-colors ${backendOk ? 'text-[#00ff9d]' : 'text-[#ff4b4b]'}`}>
@@ -455,7 +594,6 @@ function App() {
                 <FolderIcon className="w-4 h-4 cursor-pointer hover:text-white" />
              </div>
           </header>
-
           <div className="grid grid-cols-2 gap-6 text-left">
             <div>
               <div className="text-[9px] font-black text-white/20 uppercase mb-1 tracking-widest">Duration</div>
@@ -470,7 +608,6 @@ function App() {
               <div className="text-[12px] font-bold text-white/60 tabular-nums">{selected ? fmt(selected.started_at) : '--'} UTC</div>
             </div>
           </div>
-
           <div className="flex flex-col gap-4 overflow-hidden flex-1">
               <div className="flex items-center gap-2.5 text-[10px] font-black tracking-widest text-white/40 uppercase">
                 <ExecutionPathIcon className="scale-75" /> Event Log
@@ -484,16 +621,14 @@ function App() {
                     </div>
                     <div className={`rounded border border-white/5 bg-[#111418] p-3 text-[11px] leading-tight ${idx === 0 ? 'border-[#ff4b4b]/40 shadow-[0_0_15px_rgba(255,75,75,0.05)]' : ''}`}>
                        <div className="font-bold text-white/80 mb-1">{ev.event_type}</div>
-                       <div className="text-white/40 text-[10px] break-all truncate">{ev.file_path || ev.git_commit_hash || 'Context captured.'}</div>
+                       <div className="text-white/40 text-[10px] break-all whitespace-pre-wrap">{ev.file_path || ev.git_commit_hash || 'Context captured.'}</div>
                     </div>
                   </div>
                 ))}
               </div>
           </div>
         </aside>
-
       </div>
-
       {error && (
         <div className="fixed bottom-6 right-[340px] z-50">
           <div className="rounded border border-[#ff4b4b]/50 bg-[#ff4b4b]/10 p-4 text-[11px] font-black text-[#ff4b4b] uppercase tracking-widest backdrop-blur-md">
