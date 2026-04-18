@@ -2,10 +2,12 @@ import './App.css'
 import { useEffect, useMemo, useState } from 'react'
 import type { Event, Project, Session } from './api'
 import {
+  clearSessions,
   getSession,
   getResumeBundle,
   health,
   listProjects,
+  removeSession,
   listSessionEvents,
   listSessions,
   listSessionsForProject,
@@ -51,6 +53,8 @@ function App() {
   const [summarizing, setSummarizing] = useState(false)
   const [batchSummarizing, setBatchSummarizing] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [deletingSession, setDeletingSession] = useState(false)
+  const [clearingSessions, setClearingSessions] = useState(false)
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [objectiveDraft, setObjectiveDraft] = useState('')
@@ -234,6 +238,55 @@ function App() {
     }
   }
 
+  async function onRemoveSession() {
+    if (!selectedId) return
+    const ok = window.confirm('Delete this session and all its timeline events?')
+    if (!ok) return
+
+    setDeletingSession(true)
+    setError(null)
+    try {
+      await removeSession(selectedId)
+      setSelectedId(null)
+      setSelected(null)
+      setEvents([])
+      setRecentFiles([])
+      setGitCommits([])
+      await refreshSessions()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeletingSession(false)
+    }
+  }
+
+  async function onClearSessions() {
+    const target = projectId === 'all' ? 'all sessions' : 'sessions in this project'
+    const ok = window.confirm(`Clear ${target}? This cannot be undone.`)
+    if (!ok) return
+
+    setClearingSessions(true)
+    setError(null)
+    try {
+      const result = await clearSessions({
+        projectId: projectId === 'all' ? undefined : projectId,
+      })
+      setSelectedId(null)
+      setSelected(null)
+      setEvents([])
+      setRecentFiles([])
+      setGitCommits([])
+      await refreshSessions()
+      window.alert(
+        `Cleared ${result.deleted_sessions} sessions and ${result.deleted_events} events.`,
+      )
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setClearingSessions(false)
+    }
+  }
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -261,14 +314,10 @@ function App() {
             Refresh
           </button>
           <button
-            onClick={onSummarizeMissing}
-            disabled={batchSummarizing || backendOk === false}
+            onClick={onCopyResume}
+            disabled={!selected || copying}
             className="secondary"
-            title="Summarize up to 10 sessions that are missing summaries"
           >
-            {batchSummarizing ? 'Summarizing…' : 'Summarize missing'}
-          </button>
-          <button onClick={onCopyResume} disabled={!selected || copying} className="secondary">
             {copying ? 'Copying…' : 'Copy resume'}
           </button>
           <button onClick={onSummarize} disabled={!selectedId || summarizing}>
@@ -302,6 +351,32 @@ function App() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="panelActions">
+            <button
+              onClick={onSummarizeMissing}
+              disabled={batchSummarizing || backendOk === false}
+              className="secondary miniAction"
+              title="Summarize up to 10 sessions that are missing summaries"
+            >
+              {batchSummarizing ? 'Summarizing…' : 'Summarize missing'}
+            </button>
+            <button
+              onClick={onClearSessions}
+              disabled={clearingSessions || sessions.length === 0 || backendOk === false}
+              className="danger miniAction"
+              title={
+                projectId === 'all'
+                  ? 'Delete all sessions and events'
+                  : 'Delete all sessions and events for selected project'
+              }
+            >
+              {clearingSessions
+                ? 'Clearing…'
+                : projectId === 'all'
+                  ? 'Clear all sessions'
+                  : 'Clear project sessions'}
+            </button>
           </div>
           <div className="list">
             {sessions.length === 0 && !loading ? (
@@ -369,6 +444,16 @@ function App() {
               <pre className="summary">
                 {selected.ai_summary_markdown || 'No summary yet. Click “Summarize session”.'}
               </pre>
+
+              <div className="sectionTitle">Session actions</div>
+              <button
+                className="danger inlineDanger"
+                onClick={onRemoveSession}
+                disabled={deletingSession || backendOk === false}
+                title="Delete this session and all its events"
+              >
+                {deletingSession ? 'Removing…' : 'Remove this session'}
+              </button>
 
               <div className="sectionTitle">Suggested next steps</div>
               {selected.ai_suggested_next_steps && selected.ai_suggested_next_steps.length > 0 ? (

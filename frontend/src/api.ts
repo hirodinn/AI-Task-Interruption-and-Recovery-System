@@ -36,6 +36,11 @@ export type ResumeBundle = {
   git_commits: string[]
 }
 
+export type ClearSessionsResult = {
+  deleted_sessions: number
+  deleted_events: number
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(path, {
     ...init,
@@ -47,6 +52,9 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!resp.ok) {
     const text = await resp.text().catch(() => '')
     throw new Error(`${resp.status} ${resp.statusText}${text ? `: ${text}` : ''}`)
+  }
+  if (resp.status === 204) {
+    return undefined as T
   }
   return (await resp.json()) as T
 }
@@ -108,6 +116,23 @@ export function summarizeMissingSessions(opts?: {
   return apiFetch<Session[]>(`/api/sessions/summarize_missing${suffix}`, {
     method: 'POST',
     body: JSON.stringify({}),
+  })
+}
+
+export function removeSession(sessionId: string): Promise<void> {
+  return apiFetch<void>(`/api/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function clearSessions(opts?: {
+  projectId?: string
+}): Promise<ClearSessionsResult> {
+  const qs = new URLSearchParams()
+  if (opts?.projectId) qs.set('project_id', opts.projectId)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return apiFetch<ClearSessionsResult>(`/api/sessions${suffix}`, {
+    method: 'DELETE',
   })
 }
 

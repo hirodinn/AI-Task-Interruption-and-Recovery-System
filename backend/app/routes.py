@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlmodel import Session, func, select
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
 from .schemas import (
     BulkEventsIn,
+    ClearSessionsOut,
     EventIn,
     EventOut,
     ProjectOut,
@@ -193,6 +194,48 @@ def list_session_events(session_id: UUID, db: Session = Depends(get_session)):
         .order_by(ActivityEvent.ts.asc())
     ).all()
     return [EventOut.model_validate(e) for e in events]
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+def delete_session(session_id: UUID, db: Session = Depends(get_session)):
+    session_obj = db.get(WorkSession, session_id)
+    if not session_obj:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    events = db.exec(
+        select(ActivityEvent).where(ActivityEvent.session_id == session_id)
+    ).all()
+    for e in events:
+        db.delete(e)
+    db.delete(session_obj)
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.delete("/sessions", response_model=ClearSessionsOut)
+def clear_sessions(project_id: UUID | None = None, db: Session = Depends(get_session)):
+    q = select(WorkSession)
+    if project_id:
+        q = q.where(WorkSession.project_id == project_id)
+    sessions = db.exec(q).all()
+    if not sessions:
+        return ClearSessionsOut(deleted_sessions=0, deleted_events=0)
+
+    session_ids = [s.id for s in sessions]
+    events = db.exec(
+        select(ActivityEvent).where(ActivityEvent.session_id.in_(session_ids))
+    ).all()
+
+    for e in events:
+        db.delete(e)
+    for s in sessions:
+        db.delete(s)
+    db.commit()
+
+    return ClearSessionsOut(
+        deleted_sessions=len(sessions),
+        deleted_events=len(events),
+    )
 
 
 @router.get("/sessions/{session_id}/resume", response_model=ResumeBundleOut)

@@ -90,6 +90,47 @@ class Handler(FileSystemEventHandler):
         self._pending: list[dict[str, Any]] = []
         self._last_flush = 0.0
 
+    def _is_ignored(self, path: Path) -> bool:
+        s = str(path)
+        # Skip noisy directories.
+        if "/.git/" in s or "/node_modules/" in s or "/dist/" in s or "/build/" in s:
+            return True
+
+        name = path.name
+        # Skip common editor/temp artifacts.
+        if name.startswith(".goutputstream-"):
+            return True
+        if name.endswith((".pyc", ".swp", ".tmp", ".temp", "~")):
+            return True
+        if name.startswith(".~lock"):
+            return True
+
+        return False
+
+    def _queue_file_event(self, path: Path, *, kind: str) -> None:
+        if self._is_ignored(path):
+            return
+
+        now = time.time()
+        key = str(path)
+        last = self._last_sent.get(key, 0.0)
+        if now - last < max(0.0, self.cfg.debounce_seconds):
+            return
+        self._last_sent[key] = now
+
+        payload = {
+            "project_root_path": str(self.cfg.project_root),
+            "project_name": self.cfg.project_name,
+            "ts": utc_now_iso(),
+            "event_type": "file_modified",
+            "file_path": str(path),
+            "event_metadata": {"kind": kind},
+        }
+        self._pending.append(payload)
+        if now - self._last_flush > 1.0 and len(self._pending) >= 10:
+            self._last_flush = now
+            self.flush()
+
     def flush(self) -> None:
         if not self._pending:
             return
@@ -104,33 +145,18 @@ class Handler(FileSystemEventHandler):
     def on_modified(self, event):
         if event.is_directory:
             return
-        path = Path(event.src_path)
-        # Skip noisy files/dirs
-        s = str(path)
-        if "/.git/" in s or "/node_modules/" in s or "/dist/" in s or "/build/" in s:
-            return
-        if path.name.endswith((".pyc", ".swp")):
-            return
+        self._queue_file_event(Path(event.src_path), kind="fs_modified")
 
-        now = time.time()
-        key = s
-        last = self._last_sent.get(key, 0.0)
-        if now - last < max(0.0, self.cfg.debounce_seconds):
+    def on_created(self, event):
+        if event.is_directory:
             return
-        self._last_sent[key] = now
+        self._queue_file_event(Path(event.src_path), kind="fs_created")
 
-        payload = {
-            "project_root_path": str(self.cfg.project_root),
-            "project_name": self.cfg.project_name,
-            "ts": utc_now_iso(),
-            "event_type": "file_modified",
-            "file_path": str(path),
-            "event_metadata": {"kind": "fs_modified"},
-        }
-        self._pending.append(payload)
-        if now - self._last_flush > 1.0 and len(self._pending) >= 10:
-            self._last_flush = now
-            self.flush()
+    def on_moved(self, event):
+        if event.is_directory:
+            return
+        # Atomic save workflows often write temp file then rename to target path.
+        self._queue_file_event(Path(event.dest_path), kind="fs_moved")
 
 
 def main() -> None:

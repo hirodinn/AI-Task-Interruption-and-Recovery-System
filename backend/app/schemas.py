@@ -73,3 +73,8 @@ class ResumeBundleOut(BaseModel):
 class SessionPatchIn(BaseModel):
     objective: str | None = None
 
+
+class ClearSessionsOut(BaseModel):
+    deleted_sessions: int
+    deleted_events: int
+
