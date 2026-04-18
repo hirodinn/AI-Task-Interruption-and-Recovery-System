@@ -169,8 +169,13 @@ def main() -> None:
     observer.schedule(handler, str(cfg.project_root), recursive=True)
     observer.start()
 
-    last_head: str | None = None
-    last_branch: str | None = None
+    # Seed initial git state so startup does not create synthetic "changed" events.
+    if is_git_repo(cfg.project_root):
+        last_head = get_head_commit(cfg.project_root)
+        last_branch = get_branch(cfg.project_root)
+    else:
+        last_head = None
+        last_branch = None
 
     try:
         while True:
