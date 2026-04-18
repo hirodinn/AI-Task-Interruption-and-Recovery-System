@@ -72,3 +72,11 @@ OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
+To enable Mistral:
+
+```
+AI_PROVIDER=mistral
+MISTRAL_API_KEY=...
+MISTRAL_MODEL=open-mistral-nemo
+```
+

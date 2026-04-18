@@ -36,23 +36,34 @@ class NoneProvider:
             objective=None,
             summary_markdown=(
                 "AI summarization is disabled (`AI_PROVIDER=none`).\n\n"
-                "To enable: set `AI_PROVIDER=openai` and `OPENAI_API_KEY`."
+                "To enable: set either `AI_PROVIDER=openai` with `OPENAI_API_KEY` "
+                "or `AI_PROVIDER=mistral` with `MISTRAL_API_KEY`."
             ),
             summary_json=None,
             suggested_next_steps=[
-                "Set `AI_PROVIDER=openai` and `OPENAI_API_KEY` in `backend/.env`",
+                "Set provider credentials in `backend/.env`",
                 "Re-run session summarization",
             ],
         )
 
 
-class OpenAiProvider:
-    def __init__(self, *, api_key: str, model: str):
+class OpenAiCompatibleProvider:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        endpoint: str,
+        provider_name: str,
+        use_response_format: bool,
+    ):
         self._api_key = api_key
         self._model = model
+        self._endpoint = endpoint
+        self._provider_name = provider_name
+        self._use_response_format = use_response_format
 
     async def summarize_session(self, *, prompt: str) -> AiSummary:
-        # Uses OpenAI-compatible Chat Completions endpoint.
         payload = {
             "model": self._model,
             "temperature": 0.2,
@@ -67,13 +78,14 @@ class OpenAiProvider:
                 },
                 {"role": "user", "content": prompt},
             ],
-            "response_format": {"type": "json_object"},
         }
+        if self._use_response_format:
+            payload["response_format"] = {"type": "json_object"}
 
         async with httpx.AsyncClient(timeout=60) as client:
             try:
                 resp = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    self._endpoint,
                     headers={"Authorization": f"Bearer {self._api_key}"},
                     json=payload,
                 )
@@ -88,12 +100,19 @@ class OpenAiProvider:
                     except Exception:
                         retry_after = None
                     raise AiRateLimitError(
-                        message="OpenAI rate limit hit (429). Try again shortly.",
+                        message=(
+                            f"{self._provider_name} rate limit hit (429). "
+                            "Try again shortly."
+                        ),
                         retry_after_seconds=retry_after,
                     ) from e
-                raise AiUpstreamError(f"OpenAI request failed (status={status}).") from e
+                raise AiUpstreamError(
+                    f"{self._provider_name} request failed (status={status})."
+                ) from e
             except httpx.HTTPError as e:
-                raise AiUpstreamError("OpenAI request failed (network error).") from e
+                raise AiUpstreamError(
+                    f"{self._provider_name} request failed (network error)."
+                ) from e
 
             data = resp.json()
 
@@ -121,10 +140,40 @@ class OpenAiProvider:
         )
 
 
+class OpenAiProvider(OpenAiCompatibleProvider):
+    def __init__(self, *, api_key: str, model: str):
+        super().__init__(
+            api_key=api_key,
+            model=model,
+            endpoint="https://api.openai.com/v1/chat/completions",
+            provider_name="OpenAI",
+            use_response_format=True,
+        )
+
+
+class MistralProvider(OpenAiCompatibleProvider):
+    def __init__(self, *, api_key: str, model: str):
+        super().__init__(
+            api_key=api_key,
+            model=model,
+            endpoint="https://api.mistral.ai/v1/chat/completions",
+            provider_name="Mistral",
+            use_response_format=False,
+        )
+
+
 def get_provider() -> AiProvider:
-    if settings.ai_provider.lower() == "openai":
+    provider = settings.ai_provider.lower()
+
+    if provider == "openai":
         if not settings.openai_api_key:
             return NoneProvider()
         return OpenAiProvider(api_key=settings.openai_api_key, model=settings.openai_model)
+
+    if provider == "mistral":
+        if not settings.mistral_api_key:
+            return NoneProvider()
+        return MistralProvider(api_key=settings.mistral_api_key, model=settings.mistral_model)
+
     return NoneProvider()
 
