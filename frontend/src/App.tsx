@@ -278,7 +278,7 @@ function App() {
   }, [sections])
 
   return (
-    <div className="flex min-h-screen bg-[#0a0c10] text-[#e1e1e1] selection:bg-[#00f5ff]/30 font-sans">
+    <div className="flex min-h-screen w-full bg-[#0a0c10] text-[#e1e1e1] selection:bg-[#00f5ff]/30 font-sans overflow-x-hidden">
       <aside className="fixed inset-y-0 left-0 flex w-[280px] flex-col border-r border-[#00f5ff]/10 bg-[#050608] z-20">
         <div className="p-4 border-b border-white/5 space-y-3">
           <div className="flex items-center gap-3">
@@ -373,8 +373,8 @@ function App() {
         </div>
       </aside>
 
-      <div className="ml-[280px] grid grid-cols-[1fr_320px] flex-1 min-h-screen">
-        <main className="flex flex-col p-8 gap-8">
+      <div className="ml-[280px] grid grid-cols-[1fr_320px] flex-1 min-h-screen min-w-0">
+        <main className="flex flex-col p-8 gap-8 min-w-0">
           {selected ? (
             <>
               <header className="flex items-end justify-between gap-6 pb-2 border-b border-white/5">
