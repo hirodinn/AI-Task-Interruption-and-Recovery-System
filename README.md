@@ -10,6 +10,17 @@ Captures local coding activity, groups it into sessions, and uses an external LL
 
 ## Quickstart (local)
 
+### One-command starter
+
+From the repository root, run:
+
+```bash
+bash ./start-all.sh
+```
+
+This starts the backend, collector, and frontend together.
+The services still use their own `.env` files and package/dependency installs, so make sure those are set up first.
+
 ### 1) Backend
 
 ```bash
