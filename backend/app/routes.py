@@ -4,7 +4,7 @@ from datetime import timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlmodel import Session, func, select
+from sqlmodel import Session, func, select, delete
 
 from .db import get_session
 from .models import ActivityEvent, Project, WorkSession
@@ -58,6 +58,8 @@ def ingest_event(payload: EventIn, db: Session = Depends(get_session)):
     return EventOut.model_validate(event)
 
 
+from sqlalchemy.exc import IntegrityError
+
 @router.post("/events/bulk", response_model=list[EventOut])
 def ingest_events_bulk(payload: BulkEventsIn, db: Session = Depends(get_session)):
     if not payload.events:
@@ -86,7 +88,13 @@ def ingest_events_bulk(payload: BulkEventsIn, db: Session = Depends(get_session)
         out_events.append(event)
 
     # One commit per batch for speed.
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent delete might have removed the project/session
+        db.rollback()
+        return []
+        
     return [EventOut.model_validate(e) for e in out_events]
 
 
@@ -152,12 +160,8 @@ def delete_project(project_id: UUID, db: Session = Depends(get_session)):
     if not project_obj:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    events = db.exec(select(ActivityEvent).where(ActivityEvent.project_id == project_id)).all()
-    for e in events:
-        db.delete(e)
-    sessions = db.exec(select(WorkSession).where(WorkSession.project_id == project_id)).all()
-    for s in sessions:
-        db.delete(s)
+    db.execute(delete(ActivityEvent).where(ActivityEvent.project_id == project_obj.id).execution_options(synchronize_session=False))
+    db.execute(delete(WorkSession).where(WorkSession.project_id == project_obj.id).execution_options(synchronize_session=False))
     
     db.delete(project_obj)
     db.commit()
@@ -236,11 +240,7 @@ def delete_session(session_id: UUID, db: Session = Depends(get_session)):
     if not session_obj:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    events = db.exec(
-        select(ActivityEvent).where(ActivityEvent.session_id == session_id)
-    ).all()
-    for e in events:
-        db.delete(e)
+    db.execute(delete(ActivityEvent).where(ActivityEvent.session_id == session_id).execution_options(synchronize_session=False))
     db.delete(session_obj)
     db.commit()
     return Response(status_code=204)
@@ -256,19 +256,24 @@ def clear_sessions(project_id: UUID | None = None, db: Session = Depends(get_ses
         return ClearSessionsOut(deleted_sessions=0, deleted_events=0)
 
     session_ids = [s.id for s in sessions]
-    events = db.exec(
-        select(ActivityEvent).where(ActivityEvent.session_id.in_(session_ids))
-    ).all()
-
-    for e in events:
-        db.delete(e)
+    
+    events_query = delete(ActivityEvent).where(ActivityEvent.session_id.in_(session_ids)).execution_options(synchronize_session=False)
+    sessions_query = delete(WorkSession).where(WorkSession.id.in_(session_ids)).execution_options(synchronize_session=False)
+    
+    num_events = db.exec(select(func.count(ActivityEvent.id)).where(ActivityEvent.session_id.in_(session_ids))).one()
+    
+    db.execute(events_query)
+    db.execute(sessions_query)
+    
+    # Remove sessions from identity map manually by clearing session cache or flushing
     for s in sessions:
-        db.delete(s)
+        db.expunge(s)
+        
     db.commit()
 
     return ClearSessionsOut(
         deleted_sessions=len(sessions),
-        deleted_events=len(events),
+        deleted_events=int(num_events),
     )
 
 

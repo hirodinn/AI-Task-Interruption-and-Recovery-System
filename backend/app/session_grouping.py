@@ -9,6 +9,8 @@ from .models import Project, WorkSession
 from .settings import settings
 
 
+from sqlalchemy.orm.exc import StaleDataError
+
 def get_or_create_project(
     db: Session, *, root_path: str, name: str | None
 ) -> Project:
@@ -17,8 +19,12 @@ def get_or_create_project(
         if name and existing.name != name:
             existing.name = name
             db.add(existing)
-            db.commit()
-            db.refresh(existing)
+            try:
+                db.commit()
+                db.refresh(existing)
+            except StaleDataError:
+                db.rollback()
+                pass # The project was deleted, it will be recreated or just skipped for now
         return existing
 
     project = Project(name=name or root_path.split("/")[-1] or root_path, root_path=root_path)
@@ -47,8 +53,16 @@ def assign_session_id(
         if ts > latest.ended_at:
             latest.ended_at = ts
             db.add(latest)
-            db.commit()
-            db.refresh(latest)
+            try:
+                db.commit()
+                db.refresh(latest)
+            except StaleDataError:
+                db.rollback()
+                session = WorkSession(project_id=project_id, started_at=ts, ended_at=ts)
+                db.add(session)
+                db.commit()
+                db.refresh(session)
+                return session
         return latest
 
     session = WorkSession(project_id=project_id, started_at=ts, ended_at=ts)
@@ -56,4 +70,5 @@ def assign_session_id(
     db.commit()
     db.refresh(session)
     return session
+
 
