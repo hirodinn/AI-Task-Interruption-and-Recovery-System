@@ -14,6 +14,7 @@ from .schemas import (
     EventIn,
     EventOut,
     ProjectOut,
+    ProjectPatchIn,
     ResumeBundleOut,
     SessionOut,
     SessionPatchIn,
@@ -128,6 +129,39 @@ def list_projects(db: Session = Depends(get_session)):
     projects = db.exec(select(Project).order_by(Project.created_at.desc()).limit(200)).all()
     return [ProjectOut.model_validate(p) for p in projects]
 
+
+@router.patch("/projects/{project_id}", response_model=ProjectOut)
+def patch_project(project_id: UUID, payload: ProjectPatchIn, db: Session = Depends(get_session)):
+    project_obj = db.get(Project, project_id)
+    if not project_obj:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if payload.name is not None:
+        v = payload.name.strip()
+        project_obj.name = v if v else project_obj.name
+
+    db.add(project_obj)
+    db.commit()
+    db.refresh(project_obj)
+    return ProjectOut.model_validate(project_obj)
+
+
+@router.delete("/projects/{project_id}", status_code=204)
+def delete_project(project_id: UUID, db: Session = Depends(get_session)):
+    project_obj = db.get(Project, project_id)
+    if not project_obj:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    events = db.exec(select(ActivityEvent).where(ActivityEvent.project_id == project_id)).all()
+    for e in events:
+        db.delete(e)
+    sessions = db.exec(select(WorkSession).where(WorkSession.project_id == project_id)).all()
+    for s in sessions:
+        db.delete(s)
+    
+    db.delete(project_obj)
+    db.commit()
+    return Response(status_code=204)
 
 @router.get("/sessions/{session_id}", response_model=SessionOut)
 def get_session_detail(session_id: UUID, db: Session = Depends(get_session)):

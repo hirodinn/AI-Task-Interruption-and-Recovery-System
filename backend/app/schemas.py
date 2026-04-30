@@ -78,3 +78,6 @@ class ClearSessionsOut(BaseModel):
     deleted_sessions: int
     deleted_events: int
 
+
+class ProjectPatchIn(BaseModel):
+    name: str | None = None
