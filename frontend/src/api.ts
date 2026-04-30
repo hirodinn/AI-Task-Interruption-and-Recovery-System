@@ -119,6 +119,22 @@ export function summarizeMissingSessions(opts?: {
   })
 }
 
+export function patchProject(
+  projectId: string,
+  patch: { name?: string | null },
+): Promise<Project> {
+  return apiFetch<Project>(`/api/projects/${projectId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export function deleteProject(projectId: string): Promise<void> {
+  return apiFetch<void>(`/api/projects/${projectId}`, {
+    method: 'DELETE',
+  })
+}
+
 export function removeSession(sessionId: string): Promise<void> {
   return apiFetch<void>(`/api/sessions/${sessionId}`, {
     method: 'DELETE',

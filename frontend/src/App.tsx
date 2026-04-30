@@ -11,6 +11,8 @@ import {
   clearSessions,
   patchSession,
   summarizeSession,
+  patchProject,
+  deleteProject,
 } from './api'
 import type { Event, Project, Session } from './api'
 
@@ -227,6 +229,36 @@ function App() {
     finally { setClearingSessions(false) }
   }
 
+  const onDeleteProject = async () => {
+    if (!projectId || projectId === 'all') return
+    if (!window.confirm(`Delete this project completely? All sessions and events will be lost.`)) return
+
+    try {
+      await deleteProject(projectId)
+      const p = await listProjects()
+      setProjects(p)
+      if (p.length > 0) {
+        setProjectId(p[0].id)
+        refreshSessions(p[0].id, true)
+      } else {
+        setProjectId('')
+        setSessions([])
+      }
+    } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
+  }
+
+  const onRenameProject = async () => {
+    if (!projectId || projectId === 'all') return
+    const currentName = projects.find(p => p.id === projectId)?.name || ''
+    const newName = window.prompt("Enter new project name:", currentName)
+    if (!newName || newName.trim() === '' || newName === currentName) return
+
+    try {
+      const updated = await patchProject(projectId, { name: newName.trim() })
+      setProjects(prev => prev.map(p => p.id === projectId ? updated : p))
+    } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
+  }
+
   const onRemoveSession = async () => {
     if (!selectedId || !window.confirm('Delete this session?')) return
     try {
@@ -298,6 +330,19 @@ function App() {
                 <ChevronDownIcon />
               </div>
             </div>
+            
+          </div>
+          {projectId && projectId !== 'all' && (
+            <div className="flex gap-2 mb-2">
+              <button onClick={onRenameProject} className="flex-1 rounded border border-white/10 bg-white/5 py-1 px-2 text-[10px] font-bold text-white/50 uppercase hover:bg-white/10 hover:text-white transition">
+                Rename
+              </button>
+              <button onClick={onDeleteProject} className="flex-1 rounded border border-red-500/20 bg-red-500/5 py-1 px-2 text-[10px] font-bold text-red-500/60 uppercase hover:bg-red-500/10 hover:text-red-500 transition">
+                Delete
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
             <button 
               onClick={() => refreshSessions()}
               title="Manual Sync"
