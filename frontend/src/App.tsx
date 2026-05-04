@@ -108,7 +108,7 @@ function renderInlineMarkdown(text: string) {
 
 function App() {
   const [projects, setProjects] = useState<Project[]>([])
-  const [projectId, setProjectId] = useState<string>('')
+  const [projectId, setProjectId] = useState<string>(() => localStorage.getItem('trackedProjectId') || '')
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Session | null>(null)
@@ -148,8 +148,11 @@ function App() {
         if (!cancelled) {
           setProjects(p)
           if (p.length > 0) {
-            setProjectId(p[0].id)
-            const s = await listSessionsForProject(p[0].id)
+            const savedId = localStorage.getItem('trackedProjectId')
+            const activeId = savedId && p.some(proj => proj.id === savedId) ? savedId : p[0].id
+            setProjectId(activeId)
+            localStorage.setItem('trackedProjectId', activeId)
+            const s = activeId === 'all' ? await listSessions() : await listSessionsForProject(activeId)
             if (!cancelled) {
               setSessions(s)
               if (s.length > 0) setSelectedId(s[0].id)
@@ -240,9 +243,11 @@ function App() {
       setProjects(p)
       if (p.length > 0) {
         setProjectId(p[0].id)
+        localStorage.setItem('trackedProjectId', p[0].id)
         refreshSessions(p[0].id, true)
       } else {
         setProjectId('')
+        localStorage.removeItem('trackedProjectId')
         setSessions([])
       }
     } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
@@ -300,6 +305,7 @@ function App() {
       const created = await createProject({ root_path: root_path.trim(), name: name?.trim() || null })
       setProjects(prev => [created, ...prev])
       setProjectId(created.id)
+      localStorage.setItem('trackedProjectId', created.id)
       refreshSessions(created.id, true)
     } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
   }
@@ -335,7 +341,8 @@ function App() {
                   value={projectId}
                   onChange={(e) => { 
                     const nextId = e.target.value;
-                    setProjectId(nextId); 
+                    setProjectId(nextId);
+                    localStorage.setItem('trackedProjectId', nextId);
                     refreshSessions(nextId, true); 
                   }}
               >
@@ -345,8 +352,12 @@ function App() {
                 <ChevronDownIcon />
               </div>
             </div>
-            
           </div>
+          {projectId && projectId !== 'all' && (
+            <div className="text-[10px] text-white/40 break-all font-mono">
+              {projects.find(p => p.id === projectId)?.root_path}
+            </div>
+          )}
           {projectId && projectId !== 'all' && (
             <div className="flex gap-2 mb-2">
               <button onClick={onRenameProject} className="flex-1 rounded border border-white/10 bg-white/5 py-1 px-2 text-[10px] font-bold text-white/50 uppercase hover:bg-white/10 hover:text-white transition">

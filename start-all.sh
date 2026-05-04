@@ -8,10 +8,8 @@ COLLECTOR_DIR="$ROOT_DIR/collector"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 
 : "${BACKEND_URL:=http://127.0.0.1:8000}"
-: "${PROJECT_ROOT:=$ROOT_DIR}"
 
 export BACKEND_URL
-export PROJECT_ROOT
 
 for command_name in python3 npm; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -58,7 +56,7 @@ start_service "frontend" "$FRONTEND_DIR" npm run dev -- --host 127.0.0.1 --port 
 echo "All services are running."
 echo "Backend:   http://127.0.0.1:8000"
 echo "Frontend:  http://127.0.0.1:5173"
-echo "Collector: watching $PROJECT_ROOT"
+echo "Collector: listening for frontend assigned projects via backend..."
 
 while true; do
   wait -n

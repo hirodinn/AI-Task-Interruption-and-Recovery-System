@@ -10,7 +10,7 @@ pip3 install --break-system-packages -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and set `PROJECT_ROOT` to the repo you want to track.
+Note: `PROJECT_ROOT` and `PROJECT_NAME` are no longer managed through the `.env` file or terminal exports. The Collector now automatically synchronizes configured projects created directly using the Frontend Interface using the running Backend.
 
 ## Run
 
