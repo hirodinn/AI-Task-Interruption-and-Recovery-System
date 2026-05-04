@@ -13,6 +13,7 @@ import {
   summarizeSession,
   patchProject,
   deleteProject,
+  createProject,
 } from './api'
 import type { Event, Project, Session } from './api'
 
@@ -289,6 +290,20 @@ function App() {
     } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
   }
 
+  const onCreateProject = async () => {
+    const root_path = window.prompt("Enter new Project's root path (e.g. /home/user/my-repo):")
+    if (!root_path || !root_path.trim()) return
+
+    const name = window.prompt("Enter new Project name (optional):")
+    
+    try {
+      const created = await createProject({ root_path: root_path.trim(), name: name?.trim() || null })
+      setProjects(prev => [created, ...prev])
+      setProjectId(created.id)
+      refreshSessions(created.id, true)
+    } catch (e: unknown) { if (e instanceof Error) setError(e.message) }
+  }
+
   const sections = useMemo(() => parseMarkdownToSections(selected?.ai_summary_markdown || ''), [selected])
   
   const structuredFileDetails = useMemo(() => {
@@ -342,6 +357,11 @@ function App() {
               </button>
             </div>
           )}
+          <div className="flex gap-2 mb-2">
+              <button onClick={onCreateProject} className="flex-1 rounded border border-[#00f5ff]/20 bg-[#00f5ff]/5 py-1 px-2 text-[10px] font-bold text-[#00f5ff]/80 uppercase hover:bg-[#00f5ff]/10 hover:text-[#00f5ff] transition">
+                + Create Project
+              </button>
+          </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => refreshSessions()}

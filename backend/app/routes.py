@@ -15,6 +15,7 @@ from .schemas import (
     EventOut,
     ProjectOut,
     ProjectPatchIn,
+    ProjectCreateIn,
     ResumeBundleOut,
     SessionOut,
     SessionPatchIn,
@@ -136,6 +137,12 @@ def list_sessions(project_id: UUID | None = None, db: Session = Depends(get_sess
 def list_projects(db: Session = Depends(get_session)):
     projects = db.exec(select(Project).order_by(Project.created_at.desc()).limit(200)).all()
     return [ProjectOut.model_validate(p) for p in projects]
+
+
+@router.post("/projects", response_model=ProjectOut)
+def create_project(payload: ProjectCreateIn, db: Session = Depends(get_session)):
+    project = get_or_create_project(db, root_path=payload.root_path, name=payload.name)
+    return ProjectOut.model_validate(project)
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectOut)

@@ -71,6 +71,13 @@ export function listProjects(): Promise<Project[]> {
   return apiFetch<Project[]>('/api/projects')
 }
 
+export function createProject(payload: { root_path: string; name?: string | null }): Promise<Project> {
+  return apiFetch<Project>('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function listSessionsForProject(projectId: string): Promise<Session[]> {
   const qs = new URLSearchParams({ project_id: projectId })
   return apiFetch<Session[]>(`/api/sessions?${qs.toString()}`)

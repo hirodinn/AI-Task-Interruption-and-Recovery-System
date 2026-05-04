@@ -21,8 +21,6 @@ def utc_now_iso() -> str:
 @dataclass(frozen=True)
 class Config:
     backend_url: str
-    project_root: Path
-    project_name: str | None
     poll_git_seconds: int
     debounce_seconds: float
 
@@ -30,23 +28,24 @@ class Config:
 def read_config() -> Config:
     load_dotenv()
     backend_url = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
-    project_root = Path(os.environ["PROJECT_ROOT"]).expanduser().resolve()
-    project_name = os.environ.get("PROJECT_NAME") or None
     poll_git_seconds = int(os.environ.get("POLL_GIT_SECONDS", "10"))
     debounce_seconds = float(os.environ.get("DEBOUNCE_SECONDS", "1"))
     return Config(
         backend_url=backend_url,
-        project_root=project_root,
-        project_name=project_name,
         poll_git_seconds=poll_git_seconds,
         debounce_seconds=debounce_seconds,
     )
 
 
-def post_event(cfg: Config, payload: dict[str, Any]) -> None:
-    url = f"{cfg.backend_url}/api/events"
-    resp = requests.post(url, json=payload, timeout=10)
-    resp.raise_for_status()
+def fetch_projects(cfg: Config) -> list[dict[str, Any]]:
+    try:
+        url = f"{cfg.backend_url}/api/projects"
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        print(f"Failed to fetch projects: {e}")
+        return []
 
 def post_events_bulk(cfg: Config, events: list[dict[str, Any]]) -> None:
     url = f"{cfg.backend_url}/api/events/bulk"
@@ -84,27 +83,25 @@ def get_head_commit(cwd: Path) -> str | None:
 
 
 class Handler(FileSystemEventHandler):
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, project_root: str, project_name: str | None):
         self.cfg = cfg
+        self.project_root_str = project_root
+        self.project_name = project_name
         self._last_sent: dict[str, float] = {}
         self._pending: list[dict[str, Any]] = []
         self._last_flush = 0.0
 
     def _is_ignored(self, path: Path) -> bool:
         s = str(path)
-        # Skip noisy directories.
         if "/.git/" in s or "/node_modules/" in s or "/dist/" in s or "/build/" in s:
             return True
-
         name = path.name
-        # Skip common editor/temp artifacts.
         if name.startswith(".goutputstream-"):
             return True
         if name.endswith((".pyc", ".swp", ".tmp", ".temp", "~")):
             return True
         if name.startswith(".~lock"):
             return True
-
         return False
 
     def _queue_file_event(self, path: Path, *, kind: str) -> None:
@@ -119,8 +116,8 @@ class Handler(FileSystemEventHandler):
         self._last_sent[key] = now
 
         payload = {
-            "project_root_path": str(self.cfg.project_root),
-            "project_name": self.cfg.project_name,
+            "project_root_path": self.project_root_str,
+            "project_name": self.project_name,
             "ts": utc_now_iso(),
             "event_type": "file_modified",
             "file_path": str(path),
@@ -139,53 +136,78 @@ class Handler(FileSystemEventHandler):
         try:
             post_events_bulk(self.cfg, batch)
         except Exception:
-            # best-effort
             pass
 
     def on_modified(self, event):
-        if event.is_directory:
-            return
+        if event.is_directory: return
         self._queue_file_event(Path(event.src_path), kind="fs_modified")
 
     def on_created(self, event):
-        if event.is_directory:
-            return
+        if event.is_directory: return
         self._queue_file_event(Path(event.src_path), kind="fs_created")
 
     def on_moved(self, event):
-        if event.is_directory:
-            return
-        # Atomic save workflows often write temp file then rename to target path.
+        if event.is_directory: return
         self._queue_file_event(Path(event.dest_path), kind="fs_moved")
 
 
-def main() -> None:
-    cfg = read_config()
-    if not cfg.project_root.exists():
-        raise SystemExit(f"PROJECT_ROOT does not exist: {cfg.project_root}")
+class ProjectManager:
+    def __init__(self, cfg: Config, observer: Observer):
+        self.cfg = cfg
+        self.observer = observer
+        self.handlers: dict[str, Handler] = {}
+        self.watches = {}
+        self.git_states = {}
 
-    handler = Handler(cfg)
-    observer = Observer()
-    observer.schedule(handler, str(cfg.project_root), recursive=True)
-    observer.start()
-
-    # Seed initial git state so startup does not create synthetic "changed" events.
-    if is_git_repo(cfg.project_root):
-        last_head = get_head_commit(cfg.project_root)
-        last_branch = get_branch(cfg.project_root)
-    else:
-        last_head = None
-        last_branch = None
-
-    try:
-        while True:
-            if is_git_repo(cfg.project_root):
-                head = get_head_commit(cfg.project_root)
-                branch = get_branch(cfg.project_root)
+    def sync_projects(self, projects: list[dict[str, Any]]):
+        active_ids = {p["id"] for p in projects}
+        current_ids = set(self.handlers.keys())
+        
+        # Remove deleted projects
+        for pid in current_ids - active_ids:
+            if pid in self.watches:
+                self.observer.unschedule(self.watches[pid])
+                del self.watches[pid]
+            del self.handlers[pid]
+            if pid in self.git_states:
+                del self.git_states[pid]
+        
+        # Add new projects
+        for p in projects:
+            pid = p["id"]
+            root_path = p["root_path"]
+            if pid not in self.handlers and Path(root_path).exists():
+                h = Handler(self.cfg, project_root=root_path, project_name=p["name"])
+                self.handlers[pid] = h
+                
+                try:
+                    w = self.observer.schedule(h, root_path, recursive=True)
+                    self.watches[pid] = w
+                except Exception as e:
+                    print(f"Failed to watch {root_path}: {e}")
+                
+                root_p = Path(root_path)
+                if is_git_repo(root_p):
+                    self.git_states[pid] = {
+                        "head": get_head_commit(root_p),
+                        "branch": get_branch(root_p)
+                    }
+                else:
+                    self.git_states[pid] = {"head": None, "branch": None}
+                    
+    def poll_git_and_flush(self):
+        for pid, h in self.handlers.items():
+            root_p = Path(h.project_root_str)
+            if pid in self.git_states and is_git_repo(root_p):
+                head = get_head_commit(root_p)
+                branch = get_branch(root_p)
+                last_head = self.git_states[pid]["head"]
+                last_branch = self.git_states[pid]["branch"]
+                
                 if head and head != last_head:
                     payload = {
-                        "project_root_path": str(cfg.project_root),
-                        "project_name": cfg.project_name,
+                        "project_root_path": h.project_root_str,
+                        "project_name": h.project_name,
                         "ts": utc_now_iso(),
                         "event_type": "git_head_changed",
                         "git_commit_hash": head,
@@ -193,35 +215,55 @@ def main() -> None:
                         "event_metadata": {"previous_head": last_head},
                     }
                     try:
-                        handler._pending.append(payload)
-                        handler.flush()
+                        h._pending.append(payload)
+                        h.flush()
                     except Exception:
                         pass
-                    last_head = head
+                    self.git_states[pid]["head"] = head
+                    
                 if branch and branch != last_branch:
                     payload = {
-                        "project_root_path": str(cfg.project_root),
-                        "project_name": cfg.project_name,
+                        "project_root_path": h.project_root_str,
+                        "project_name": h.project_name,
                         "ts": utc_now_iso(),
                         "event_type": "git_branch_changed",
                         "git_branch": branch,
                         "event_metadata": {"previous_branch": last_branch},
                     }
                     try:
-                        handler._pending.append(payload)
-                        handler.flush()
+                        h._pending.append(payload)
+                        h.flush()
                     except Exception:
                         pass
-                    last_branch = branch
+                    self.git_states[pid]["branch"] = branch
 
-            handler.flush()
+            h.flush()
+
+
+def main() -> None:
+    cfg = read_config()
+    observer = Observer()
+    observer.start()
+    
+    manager = ProjectManager(cfg, observer)
+    last_sync = 0.0
+
+    try:
+        while True:
+            now = time.time()
+            if now - last_sync > 5.0:
+                projects = fetch_projects(cfg)
+                manager.sync_projects(projects)
+                last_sync = now
+                
+            manager.poll_git_and_flush()
             time.sleep(max(1, cfg.poll_git_seconds))
     finally:
-        handler.flush()
+        for h in manager.handlers.values():
+            h.flush()
         observer.stop()
         observer.join()
 
 
 if __name__ == "__main__":
     main()
-

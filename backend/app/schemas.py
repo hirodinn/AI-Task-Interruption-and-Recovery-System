@@ -81,3 +81,7 @@ class ClearSessionsOut(BaseModel):
 
 class ProjectPatchIn(BaseModel):
     name: str | None = None
+
+class ProjectCreateIn(BaseModel):
+    name: str | None = None
+    root_path: str
